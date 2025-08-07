@@ -8,7 +8,48 @@ export default function Page() {
   const [posRe, setPosRe] = useState("-0.6")
   const [posIm, setPosIm] = useState("0.0")
 
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
+  const [dragEnd, setDragEnd] = useState<{ x: number; y: number } | null>(null)
+
   const canvasSize = 500
+
+  function getBox(start: { x: number; y: number }, end: { x: number; y: number }) {
+    const size = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y))
+    const x = start.x < end.x ? start.x : start.x - size
+    const y = start.y < end.y ? start.y : start.y - size
+    return { x, y, size }
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    const rect = (e.target as HTMLCanvasElement).getBoundingClientRect()
+    setDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    setDragEnd(null)
+    setIsDragging(true)
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!isDragging || !dragStart) return
+    const rect = (e.target as HTMLCanvasElement).getBoundingClientRect()
+    setDragEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+  }
+
+  async function handleMouseUp() {
+    if (!dragStart || !dragEnd) return
+    setIsDragging(false)
+
+    const box = getBox(dragStart, dragEnd)
+
+    await invoke("zoom_into_box", {
+      width: canvasSize,
+      height: canvasSize,
+      startX: box.x,
+      startY: box.y,
+      size: box.size
+    })
+
+    await renderFractal()
+  }
 
   async function renderFractal() {
     console.log("Starting render...")
@@ -29,15 +70,30 @@ export default function Page() {
   }
 
   return (
-    <div className="flex w-full h-screen overflow-hidden bg-white text-gray-800">
-      <div className="flex justify-center items-center w-[550px] h-screen p-6 bg-white">
+    <div className="flex justify-center items-center w-[550px] h-screen p-6 bg-white">
+      <div className="relative" style={{ width: canvasSize, height: canvasSize }}>
         <canvas
           ref={canvasRef}
           width={canvasSize}
           height={canvasSize}
           className="block border border-gray-400"
           style={{ imageRendering: "pixelated" }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
         />
+        {isDragging && dragStart && dragEnd && (
+          <div
+            className="absolute border border-blue-400 bg-blue-300 bg-opacity-20"
+            style={{
+              left: `${getBox(dragStart, dragEnd).x}px`,
+              top: `${getBox(dragStart, dragEnd).y}px`,
+              width: `${getBox(dragStart, dragEnd).size}px`,
+              height: `${getBox(dragStart, dragEnd).size}px`,
+              pointerEvents: "none",
+            }}
+          />
+        )}
       </div>
 
       <div className="flex flex-col gap-4 p-6 w-[400px] bg-white border-l border-gray-300 shadow-lg">

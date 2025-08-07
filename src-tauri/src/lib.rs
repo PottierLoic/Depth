@@ -149,6 +149,37 @@ fn set_max_iterations(
   Ok(())
 }
 
+#[tauri::command]
+fn zoom_into_box(
+  state: tauri::State<'_, Mutex<AppState>>,
+  width: u32,
+  height: u32,
+  start_x: u32,
+  start_y: u32,
+  size: u32,
+) -> Result<(), String> {
+  let mut app_state = state.lock().unwrap();
+
+  let aspect_ratio = DBig::from(width) / DBig::from(height);
+  let view_height = &app_state.zoom * DBig::from_str("2.0").unwrap();
+  let view_width = &view_height * aspect_ratio;
+
+  let step_x = &view_width / DBig::from(width);
+  let step_y = &view_height / DBig::from(height);
+
+  let new_center_x = DBig::from(start_x) + DBig::from(size) / DBig::from(2);
+  let new_center_y = DBig::from(start_y) + DBig::from(size) / DBig::from(2);
+
+  let new_re = &app_state.pos.0 - &view_width / DBig::from(2) + step_x * new_center_x;
+  let new_im = &app_state.pos.1 - &view_height / DBig::from(2) + step_y * new_center_y;
+
+  app_state.pos = (new_re, new_im);
+  app_state.zoom = &app_state.zoom * DBig::from(size) / DBig::from(width);
+
+  println!("Zoomed into box: new zoom = {}", app_state.zoom);
+  Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let app_state = AppState {
@@ -166,7 +197,8 @@ pub fn run() {
       set_pos_re,
       set_pos_im,
       set_zoom,
-      set_max_iterations
+      set_max_iterations,
+      zoom_into_box,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
