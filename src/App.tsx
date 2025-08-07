@@ -4,8 +4,8 @@ import { invoke } from '@tauri-apps/api/core'
 export default function Page() {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [zoom, setZoom] = useState(1.0)
-  const [iterations, setIterations] = useState(100)
+  const [zoom, setZoom] = useState("1.0")
+  const [maxIterations, setMaxIterations] = useState(100)
   const [posRe, setPosRe] = useState("0.0")
   const [posIm, setPosIm] = useState("0.0")
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
@@ -24,7 +24,6 @@ export default function Page() {
 
   async function renderFractal(width: number, height: number) {
     console.log("Starting render...")
-
     try {
       const response = await invoke<string>("render_frame", { width, height })
       const { pixels, width: w, height: h } = JSON.parse(response)
@@ -41,8 +40,13 @@ export default function Page() {
     }
   }
 
+  // @ts-ignore
   return (
-    <div ref={containerRef} className="relative w-full h-screen overflow-hidden bg-black">
+    <div
+      ref={containerRef}
+      className="relative w-full h-screen overflow-hidden bg-black"
+      onContextMenu={e => e.preventDefault()}
+    >
       <canvas
         ref={canvasRef}
         width={dimensions.width}
@@ -60,7 +64,10 @@ export default function Page() {
             type="number"
             step="any"
             value={zoom}
-            onChange={e => setZoom(parseFloat(e.target.value))}
+            onChange={e => setZoom(e.target.value)}
+            onBlur={() => {
+              invoke("set_zoom", { zoom: zoom })
+            }}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
@@ -69,8 +76,11 @@ export default function Page() {
           <label className="block text-sm font-medium text-gray-700">Iterations</label>
           <input
             type="number"
-            value={iterations}
-            onChange={e => setIterations(parseInt(e.target.value))}
+            value={maxIterations}
+            onChange={e => setMaxIterations(parseInt(e.target.value))}
+            onBlur={() => {
+              invoke("set_max_iterations", { maxIterations: posRe })
+            }}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
@@ -81,6 +91,9 @@ export default function Page() {
             type="text"
             value={posRe}
             onChange={e => setPosRe(e.target.value)}
+            onBlur={() => {
+              invoke("set_pos_re", { posRe: posRe })
+            }}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
@@ -91,15 +104,16 @@ export default function Page() {
             type="text"
             value={posIm}
             onChange={e => setPosIm(e.target.value)}
+            onBlur={() => {
+              invoke("set_pos_re", { posIm: posIm })
+            }}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
 
         <button
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          onClick={() => {
-            renderFractal(dimensions.width, dimensions.height)
-          }}
+          onClick={() => renderFractal(dimensions.width, dimensions.height)}
         >
           Render
         </button>
