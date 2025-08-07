@@ -1,8 +1,8 @@
+use dashu_float::{round::mode::HalfAway, DBig};
+use rayon::prelude::*;
+use serde::Serialize;
 use std::str::FromStr;
 use std::sync::Mutex;
-use serde::Serialize;
-use dashu_float::{DBig, round::mode::HalfAway};
-use rayon::prelude::*;
 
 pub type Float = DBig;
 
@@ -37,7 +37,10 @@ async fn render_frame(
   let two: Float = Float::from_str("2.0").unwrap();
 
   println!("Render started");
-  println!("With values {} {} {}", app_state.pos.0, app_state.pos.1, app_state.zoom);
+  println!(
+    "With values {} {} {}",
+    app_state.pos.0, app_state.pos.1, app_state.zoom
+  );
 
   let result = tauri::async_runtime::spawn_blocking(move || {
     let zoom = app_state.zoom;
@@ -53,8 +56,12 @@ async fn render_frame(
     let step_x = &view_width / Float::from(width);
     let step_y = &view_height / Float::from(height);
 
-    let re_coords: Vec<Float> = (0..width).map(|x| &start_x + &step_x * Float::from(x)).collect();
-    let im_coords: Vec<Float> = (0..height).map(|y| &start_y + &step_y * Float::from(y)).collect();
+    let re_coords: Vec<Float> = (0..width)
+      .map(|x| &start_x + &step_x * Float::from(x))
+      .collect();
+    let im_coords: Vec<Float> = (0..height)
+      .map(|y| &start_y + &step_y * Float::from(y))
+      .collect();
 
     let pixels: Vec<u8> = (0..(width * height))
       .into_par_iter()
@@ -101,8 +108,8 @@ async fn render_frame(
 
     serde_json::to_string(&frame).map_err(|e| e.to_string())
   })
-    .await
-    .map_err(|e| e.to_string())?;
+  .await
+  .map_err(|e| e.to_string())?;
   println!("Render finished");
   result
 }
@@ -132,7 +139,10 @@ fn set_zoom(state: tauri::State<'_, Mutex<AppState>>, zoom: String) -> Result<()
 }
 
 #[tauri::command]
-fn set_max_iterations(state: tauri::State<'_, Mutex<AppState>>, max_iterations: u32) -> Result<(), String> {
+fn set_max_iterations(
+  state: tauri::State<'_, Mutex<AppState>>,
+  max_iterations: u32,
+) -> Result<(), String> {
   let mut app_state = state.lock().unwrap();
   app_state.max_iterations = max_iterations;
   println!("Updated iterations to {}", app_state.max_iterations);
@@ -151,7 +161,13 @@ pub fn run() {
   tauri::Builder::default()
     .manage(Mutex::new(app_state))
     .plugin(tauri_plugin_opener::init())
-    .invoke_handler(tauri::generate_handler![render_frame, set_pos_re, set_pos_im, set_zoom, set_max_iterations])
+    .invoke_handler(tauri::generate_handler![
+      render_frame,
+      set_pos_re,
+      set_pos_im,
+      set_zoom,
+      set_max_iterations
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

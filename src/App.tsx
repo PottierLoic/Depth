@@ -30,7 +30,6 @@ export default function Page() {
 
   return (
     <div className="flex w-full h-screen overflow-hidden bg-white text-gray-800">
-      {/* Left side with padding and white background */}
       <div className="flex justify-center items-center w-[550px] h-screen p-6 bg-white">
         <canvas
           ref={canvasRef}
@@ -41,10 +40,8 @@ export default function Page() {
         />
       </div>
 
-      {/* Control panel */}
       <div className="flex flex-col gap-4 p-6 w-[400px] bg-white border-l border-gray-300 shadow-lg">
         <h2 className="text-xl font-semibold">Fractal Settings</h2>
-
         <div>
           <label className="block text-sm font-medium">Zoom</label>
           <input
@@ -56,7 +53,6 @@ export default function Page() {
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
-
         <div>
           <label className="block text-sm font-medium">Iterations</label>
           <input
@@ -67,7 +63,6 @@ export default function Page() {
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
-
         <div>
           <label className="block text-sm font-medium">Position (Real)</label>
           <input
@@ -78,7 +73,6 @@ export default function Page() {
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
-
         <div>
           <label className="block text-sm font-medium">Position (Imaginary)</label>
           <input
@@ -89,7 +83,6 @@ export default function Page() {
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
-
         <button
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
           onClick={renderFractal}
