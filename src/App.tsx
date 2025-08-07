@@ -1,31 +1,19 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { invoke } from '@tauri-apps/api/core'
 
 export default function Page() {
-  const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [zoom, setZoom] = useState("1.0")
+  const [zoom, setZoom] = useState("1.65")
   const [maxIterations, setMaxIterations] = useState(100)
-  const [posRe, setPosRe] = useState("0.0")
+  const [posRe, setPosRe] = useState("-0.6")
   const [posIm, setPosIm] = useState("0.0")
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
-  useEffect(() => {
-    const resize = () => {
-      if (containerRef.current) {
-        const { clientWidth, clientHeight } = containerRef.current
-        setDimensions({ width: clientWidth, height: clientHeight })
-      }
-    }
-    resize()
-    window.addEventListener("resize", resize)
-    return () => window.removeEventListener("resize", resize)
-  }, [])
+  const canvasSize = 500
 
-  async function renderFractal(width: number, height: number) {
+  async function renderFractal() {
     console.log("Starting render...")
     try {
-      const response = await invoke<string>("render_frame", { width, height })
+      const response = await invoke<string>("render_frame", { width: canvasSize, height: canvasSize })
       const { pixels, width: w, height: h } = JSON.parse(response)
 
       const ctx = canvasRef.current?.getContext("2d")
@@ -40,80 +28,71 @@ export default function Page() {
     }
   }
 
-  // @ts-ignore
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-screen overflow-hidden bg-black"
-      onContextMenu={e => e.preventDefault()}
-    >
-      <canvas
-        ref={canvasRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        className="w-full h-full block"
-        style={{ imageRendering: "pixelated" }}
-      />
+    <div className="flex w-full h-screen overflow-hidden bg-white text-gray-800">
+      {/* Left side with padding and white background */}
+      <div className="flex justify-center items-center w-[550px] h-screen p-6 bg-white">
+        <canvas
+          ref={canvasRef}
+          width={canvasSize}
+          height={canvasSize}
+          className="block border border-gray-400"
+          style={{ imageRendering: "pixelated" }}
+        />
+      </div>
 
-      <div className="absolute top-4 right-4 w-80 bg-white bg-opacity-90 border border-gray-300 p-6 rounded-lg shadow-lg flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-gray-800">Fractal Settings</h2>
+      {/* Control panel */}
+      <div className="flex flex-col gap-4 p-6 w-[400px] bg-white border-l border-gray-300 shadow-lg">
+        <h2 className="text-xl font-semibold">Fractal Settings</h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Zoom</label>
+          <label className="block text-sm font-medium">Zoom</label>
           <input
             type="number"
             step="any"
             value={zoom}
             onChange={e => setZoom(e.target.value)}
-            onBlur={() => {
-              invoke("set_zoom", { zoom: zoom })
-            }}
+            onBlur={() => invoke("set_zoom", { zoom })}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Iterations</label>
+          <label className="block text-sm font-medium">Iterations</label>
           <input
             type="number"
             value={maxIterations}
             onChange={e => setMaxIterations(parseInt(e.target.value))}
-            onBlur={() => {
-              invoke("set_max_iterations", { maxIterations: posRe })
-            }}
+            onBlur={() => invoke("set_max_iterations", { maxIterations })}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Position (Real)</label>
+          <label className="block text-sm font-medium">Position (Real)</label>
           <input
             type="text"
             value={posRe}
             onChange={e => setPosRe(e.target.value)}
-            onBlur={() => {
-              invoke("set_pos_re", { posRe: posRe })
-            }}
+            onBlur={() => invoke("set_pos_re", { posRe })}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Position (Imaginary)</label>
+          <label className="block text-sm font-medium">Position (Imaginary)</label>
           <input
             type="text"
             value={posIm}
             onChange={e => setPosIm(e.target.value)}
-            onBlur={() => {
-              invoke("set_pos_re", { posIm: posIm })
-            }}
+            onBlur={() => invoke("set_pos_im", { posIm })}
             className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-200"
           />
         </div>
 
         <button
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          onClick={() => renderFractal(dimensions.width, dimensions.height)}
+          onClick={renderFractal}
         >
           Render
         </button>

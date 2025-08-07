@@ -43,8 +43,9 @@ async fn render_frame(
     let zoom = app_state.zoom;
     let max_iterations = app_state.max_iterations;
 
-    let view_width = &zoom * Float::from_str("3.5").unwrap();
+    let aspect_ratio = Float::from(width) / Float::from(height);
     let view_height = &zoom * Float::from_str("2.0").unwrap();
+    let view_width = &view_height * aspect_ratio;
 
     let start_x = &app_state.pos.0 - &view_width / Float::from(2);
     let start_y = &app_state.pos.1 - &view_height / Float::from(2);
@@ -142,9 +143,9 @@ fn set_max_iterations(state: tauri::State<'_, Mutex<AppState>>, max_iterations: 
 pub fn run() {
   let app_state = AppState {
     set: Set::Mandelbrot,
-    pos: (Float::ZERO, Float::ZERO),
+    pos: (Float::from_str("-0.6").unwrap(), Float::ZERO),
     max_iterations: 100,
-    zoom: Float::ONE,
+    zoom: Float::from_str("1.65").unwrap(),
   };
 
   tauri::Builder::default()
