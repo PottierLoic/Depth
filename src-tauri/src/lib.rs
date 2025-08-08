@@ -1,8 +1,9 @@
-use dashu_float::{round::mode::HalfAway, DBig};
+use dashu_float::DBig;
 use rayon::prelude::*;
 use serde::Serialize;
 use std::str::FromStr;
 use std::sync::Mutex;
+use dashu_float::ops::EstimatedLog2;
 
 pub type Float = DBig;
 
@@ -44,17 +45,23 @@ async fn render_frame(
 
   let result = tauri::async_runtime::spawn_blocking(move || {
     let zoom = app_state.zoom;
+    let precision = estimate_required_bits(&zoom, width);
+    println!("Using {} bits of precision", precision);
     let max_iterations = app_state.max_iterations;
 
-    let aspect_ratio = Float::from(width) / Float::from(height);
-    let view_height = &zoom * Float::from_str("2.0").unwrap();
-    let view_width = &view_height * aspect_ratio;
+    let aspect_ratio: Float = Float::from(width).with_precision(precision).value()
+      / Float::from(height).with_precision(precision).value();
+    let view_height: Float = zoom.clone().with_precision(precision).value()
+      * Float::from_str("2.0").unwrap().with_precision(precision).value();
+    let view_width = view_height.clone() * aspect_ratio;
 
-    let start_x = &app_state.pos.0 - &view_width / Float::from(2);
-    let start_y = &app_state.pos.1 - &view_height / Float::from(2);
+    let start_x = app_state.pos.0.clone().with_precision(precision).value()
+      - &view_width / Float::from(2).with_precision(precision).value();
+    let start_y = app_state.pos.1.clone().with_precision(precision).value()
+      - &view_height / Float::from(2).with_precision(precision).value();
 
-    let step_x = &view_width / Float::from(width);
-    let step_y = &view_height / Float::from(height);
+    let step_x = &view_width / Float::from(width).with_precision(precision).value();
+    let step_y = &view_height / Float::from(height).with_precision(precision).value();
 
     println!("step_x: {}", step_x);
     println!("step_y: {}", step_y);
@@ -75,24 +82,9 @@ async fn render_frame(
         let re = &re_coords[x as usize];
         let im = &im_coords[y as usize];
 
-        let mut zr = Float::ZERO;
-        let mut zi = Float::ZERO;
+        let mut zr = Float::ZERO.with_precision(precision).value();
+        let mut zi = Float::ZERO.with_precision(precision).value();
         let mut i = 0;
-
-        if x == width / 2 && y == height / 2 {
-          println!("Center pixel:");
-          for _ in 0..5 {
-            let zr2 = &zr * &zr;
-            let zi2 = &zi * &zi;
-            println!("zr = {}, zi = {}", zr, zi);
-            println!("zr2 = {}, zi2 = {}", zr2, zi2);
-            println!("zr2 + zi2 = {}", &zr2 + &zi2);
-
-            let new_zi = &two * &zr * &zi + im;
-            zr = &zr2 - &zi2 + re;
-            zi = new_zi;
-          }
-        }
 
         while i < max_iterations {
           let zr2 = &zr * &zr;
@@ -185,6 +177,15 @@ fn get_zoom(state: tauri::State<'_, Mutex<AppState>>) -> Result<String, String> 
 #[tauri::command]
 fn get_max_iterations(state: tauri::State<'_, Mutex<AppState>>) -> Result<u32, String> {
   Ok(state.lock().unwrap().max_iterations)
+}
+
+fn estimate_required_bits(zoom: &Float, width: u32) -> usize {
+  let two = DBig::from(2);
+  let inv_step = &DBig::from(width) / (&two * zoom);
+  let repr = inv_step.repr();
+  let log2 = repr.log2_est();
+  let bits = log2.ceil() as usize;
+  bits.clamp(128, 4096)
 }
 
 #[tauri::command]

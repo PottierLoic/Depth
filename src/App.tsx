@@ -49,12 +49,15 @@ export default function Page() {
     if (!dragStart || !dragEnd) return
     setIsDragging(false)
 
+    const dx = Math.abs(dragEnd.x - dragStart.x)
+    const dy = Math.abs(dragEnd.y - dragStart.y)
+    const side = Math.max(dx, dy) * 2
+
     await invoke("zoom_into_box", {
       xPixel: Math.floor(dragStart.x),
       yPixel: Math.floor(dragStart.y),
-      size: Math.max(dragEnd.x - dragStart.x, dragEnd.y - dragStart.y),
+      size: Math.max(1, Math.min(canvasSize, Math.floor(side))),
     })
-
     const [newZoom, newRe, newIm, newIter] = await Promise.all([
       invoke<string>("get_zoom"),
       invoke<string>("get_pos_re"),
