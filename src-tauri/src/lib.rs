@@ -56,6 +56,9 @@ async fn render_frame(
     let step_x = &view_width / Float::from(width);
     let step_y = &view_height / Float::from(height);
 
+    println!("step_x: {}", step_x);
+    println!("step_y: {}", step_y);
+
     let re_coords: Vec<Float> = (0..width)
       .map(|x| &start_x + &step_x * Float::from(x))
       .collect();
@@ -75,6 +78,21 @@ async fn render_frame(
         let mut zr = Float::ZERO;
         let mut zi = Float::ZERO;
         let mut i = 0;
+
+        if x == width / 2 && y == height / 2 {
+          println!("Center pixel:");
+          for _ in 0..5 {
+            let zr2 = &zr * &zr;
+            let zi2 = &zi * &zi;
+            println!("zr = {}, zi = {}", zr, zi);
+            println!("zr2 = {}, zi2 = {}", zr2, zi2);
+            println!("zr2 + zi2 = {}", &zr2 + &zi2);
+
+            let new_zi = &two * &zr * &zi + im;
+            zr = &zr2 - &zi2 + re;
+            zi = new_zi;
+          }
+        }
 
         while i < max_iterations {
           let zr2 = &zr * &zr;
@@ -150,33 +168,59 @@ fn set_max_iterations(
 }
 
 #[tauri::command]
+fn get_pos_re(state: tauri::State<'_, Mutex<AppState>>) -> Result<String, String> {
+  Ok(state.lock().unwrap().pos.0.to_string())
+}
+
+#[tauri::command]
+fn get_pos_im(state: tauri::State<'_, Mutex<AppState>>) -> Result<String, String> {
+  Ok(state.lock().unwrap().pos.1.to_string())
+}
+
+#[tauri::command]
+fn get_zoom(state: tauri::State<'_, Mutex<AppState>>) -> Result<String, String> {
+  Ok(state.lock().unwrap().zoom.to_string())
+}
+
+#[tauri::command]
+fn get_max_iterations(state: tauri::State<'_, Mutex<AppState>>) -> Result<u32, String> {
+  Ok(state.lock().unwrap().max_iterations)
+}
+
+#[tauri::command]
 fn zoom_into_box(
   state: tauri::State<'_, Mutex<AppState>>,
-  width: u32,
-  height: u32,
-  start_x: u32,
-  start_y: u32,
+  x_pixel: u32,
+  y_pixel: u32,
   size: u32,
 ) -> Result<(), String> {
   let mut app_state = state.lock().unwrap();
 
-  let aspect_ratio = DBig::from(width) / DBig::from(height);
+  let canvas_size = DBig::from(500u32);
+  let x_mult = DBig::from(x_pixel) / &canvas_size;
+  let y_mult = DBig::from(y_pixel) / &canvas_size;
+
   let view_height = &app_state.zoom * DBig::from_str("2.0").unwrap();
-  let view_width = &view_height * aspect_ratio;
+  let view_width = view_height.clone();
 
-  let step_x = &view_width / DBig::from(width);
-  let step_y = &view_height / DBig::from(height);
+  let start_x = &app_state.pos.0 - &view_width / DBig::from(2);
+  let start_y = &app_state.pos.1 - &view_height / DBig::from(2);
 
-  let new_center_x = DBig::from(start_x) + DBig::from(size) / DBig::from(2);
-  let new_center_y = DBig::from(start_y) + DBig::from(size) / DBig::from(2);
+  let rel_x = DBig::from_str(&x_mult.to_string()).unwrap();
+  let rel_y = DBig::from_str(&y_mult.to_string()).unwrap();
 
-  let new_re = &app_state.pos.0 - &view_width / DBig::from(2) + step_x * new_center_x;
-  let new_im = &app_state.pos.1 - &view_height / DBig::from(2) + step_y * new_center_y;
+  let new_re = &start_x + &view_width * rel_x;
+  let new_im = &start_y + &view_height * rel_y;
 
+  let zoom_factor = DBig::from_str(&size.to_string()).unwrap() / canvas_size;
   app_state.pos = (new_re, new_im);
-  app_state.zoom = &app_state.zoom * DBig::from(size) / DBig::from(width);
+  app_state.zoom = &app_state.zoom * zoom_factor;
 
-  println!("Zoomed into box: new zoom = {}", app_state.zoom);
+  println!(
+    "Zoom box: x_mult={x_mult}, y_mult={y_mult}, size={size} -> new_zoom = {}",
+    app_state.zoom
+  );
+
   Ok(())
 }
 
@@ -199,6 +243,10 @@ pub fn run() {
       set_zoom,
       set_max_iterations,
       zoom_into_box,
+      get_zoom,
+      get_pos_re,
+      get_pos_im,
+      get_max_iterations,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
